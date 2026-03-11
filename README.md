@@ -121,16 +121,12 @@ SshHostKeyFingerprint = "ssh-rsa 2048 xx:xx:xx:..."
 - **Run as:** A service account with access to the credential store and log directories  
 - **"Run whether user is logged on or not"**: enabled
 
----
-
 ## Security Notes
 
 - **No credentials are hardcoded.** All secrets are read at runtime from Windows Credential Manager.
 - The `ConvertTo-PlainText` helper uses `Marshal` with explicit `ZeroFreeBSTR` cleanup to minimize the window that plaintext exists in memory.
 - The Graph API app registration should be scoped to `Mail.Send` only — no broader permissions needed.
 - Review WinSCP session logs carefully before sharing; they may contain session metadata.
-
----
 
 ## Known Limitations / Future Improvements
 
