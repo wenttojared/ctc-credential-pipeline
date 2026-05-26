@@ -1,7 +1,7 @@
-﻿# Execute.ps1
+﻿# Execute-Send.ps1
 # Purpose: Orchestrates data exports from DBVisualizer and hands off to the SFTP sync pipeline.
 #          Sends error notification emails via Graph API if any stage fails.
-# Pipeline: Timer Job > Execute.ps1 > query.sql > syncdelete.ps1 > SendMail-GraphAPI.ps1
+# Pipeline: Timer Job > Execute-Send.ps1 > query.sql > syncdelete.ps1 > SendMail-GraphAPI.ps1
 
 $sendMailScript = "E:\Path\To\SendMail-GraphAPI.ps1"
 $logFile = "C:\Path\To\Logs\Execute_Log.txt"
