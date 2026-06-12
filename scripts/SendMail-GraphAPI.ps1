@@ -133,7 +133,7 @@ $bodyJsonSend = @"
 "@
 
 try {
-    $response = Invoke-RestMethod -Method POST -Uri $urlSend -Headers $headers -Body $bodyJsonSend
+    Invoke-RestMethod -Method POST -Uri $urlSend -Headers $headers -Body $bodyJsonSend | Out-Null
     Log "Email sent successfully to $recipient."
 } catch {
     Log "FATAL: Failed to send email. Error: $($_.Exception.Message)"
