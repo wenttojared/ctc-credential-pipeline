@@ -63,6 +63,8 @@ Windows Task Scheduler (weekly, after CTC report window)
         │                     pushes staging to HCM/ERP SFTP,
         │                     then clears the staging directory
         │
+        ├── on success ──► SendCompletion-GraphAPI.ps1   ← Notifies necessary staff; includes import instructions and screenshots
+        │
         └── on error ──► SendMail-GraphAPI.ps1   ← Emails sysadmin with log attached
 ```
 
@@ -86,6 +88,7 @@ The 120-second sleep buffer in `Execute-Send.ps1` exists because DBVisualizer's 
 | `hcm-to-ctc.ps1` | Export | Connects to CTC SFTP via WinSCP, syncs the local staging directory to the remote path using idempotent directory sync, then deletes local files after a confirmed successful upload. |
 | `Execute-Retrieve.ps1` | Retrieve | Entry point for Pipeline 2. Hands off to ctc-to-hcm. Sends alert email on any failure. |
 | `ctc-to-hcm.ps1` | Retrieve | Pulls the most recent `C21_YYYYMMDD.txt` from CTC's credentials folder and all `.txt` files from CTC's config folder, then uploads each to the corresponding destination on your HCM/ERP SFTP. All configuration is consolidated at the top of the script. Transfer behavior is controlled by the `$overwriteConfig` and `$smartConfigSync` toggles. |
+| `SendCompletion-GraphAPI.ps1` | Retrieve | Sends a completion notification email to Personnel staff when the inbound pipeline finishes, including step-by-step import instructions with inline screenshots. Called by `ctc-to-hcm.ps1` on success. |
 | `SendMail-GraphAPI.ps1` | Both | Sends an error notification email via Microsoft Graph API with the WinSCP session log attached. Uses client credentials flow (no user login required). |
 
 ---
@@ -149,6 +152,7 @@ New-StoredCredential -Target "GRAPH_API_Credential" `
 | `C:\Path\To\WinSCPnet.dll` | Path to the WinSCP .NET assembly DLL |
 | `WinSCP_CTC_target_name` | Windows Credential Manager target name for CTC SFTP credentials |
 | `CTC.SFTP.Host.Address` | CTC's SFTP hostname (from CTC's Data Submission documentation) |
+| `22` | CTC SFTP port — update if anything other than default |
 | `/weekly_upload` | Remote SFTP path provided by CTC |
 | `90` (`$logRetentionDays`) | Number of days of pipeline log entries to retain; older entries are trimmed at the start of each run |
 | `30` (`$sessionLogRetentionDays`) | Number of days of WinSCP session log entries to retain (session logs grow larger; shorter window is appropriate) |
@@ -171,10 +175,24 @@ All configuration for `ctc-to-hcm.ps1` is consolidated in the configuration bloc
 | `/ctc_config_folder` | CTC remote path containing setup/reference `.txt` files |
 | `WinSCP_HCM_target_name` | Windows Credential Manager target name for HCM/ERP SFTP credentials |
 | `HCM.SFTP.Host.Address` | Your HCM/ERP platform's SFTP hostname (from your vendor) |
-| `2222` | HCM/ERP SFTP port — update if your vendor uses a different port |
+| `22` | HCM/ERP SFTP port — update if your vendor uses a different port |
 | `/hcm_credentials_destination` | Inbound path on HCM SFTP for the credential data file (from your vendor) |
 | `/hcm_config_destination` | Inbound path on HCM SFTP for config/reference files (from your vendor) |
 | `E:\Path\To\ctc-to-hcm.ps1` | Full path to `ctc-to-hcm.ps1` in `Execute-Retrieve.ps1` |
+| `E:\Path\To\SendCompletion-GraphAPI.ps1` | Full path to `SendCompletion-GraphAPI.ps1` in `ctc-to-hcm.ps1` |
+| `E:\Path\To\Instructions\Screenshots` | Folder containing screenshot image files (`step1.png`, `step2.png`, etc.) |
+| `recipient@domain.org` (SendCompletion) | Primary recipient for the completion notification — typically your credentials analyst or Personnel staff |
+| `cc-recipient-1@domain.org` | CC recipients for the completion notification — add or remove entries in the `$ccList` array |
+| `bcc-recipient-1@domain.org` | BCC recipients for the completion notification — add or remove entries in the `$bccList` array |
+
+**Inline screenshot instructions (`SendCompletion-GraphAPI.ps1`):**
+
+The completion email supports inline screenshots embedded directly in the body. To configure for your HCM/ERP system:
+
+1. Save your instruction screenshots as `step1.png`, `step2.png`, etc. in `$screenshotFolder`
+2. Update `$stepImages` in the config block to list your filenames in order
+3. Update the `$emailBody` here-string with your instruction text — each step's screenshot is referenced with `<img src="cid:stepN" />` where `stepN` matches the filename without extension
+4. To update instructions later, replace the image files in the folder — no script changes needed
 | `90` (`$logRetentionDays`) | Number of days of pipeline log entries to retain |
 | `30` (`$sessionLogRetentionDays`) | Number of days of WinSCP session log entries to retain |
 
@@ -190,13 +208,13 @@ WinSCP will display each server's fingerprint on first connection. Copy and past
 
 ```powershell
 # In hcm-to-ctc.ps1 config block (Pipeline 1 — CTC push):
-$ctcHostKey = "ssh-rsa 2048 xx:xx:xx:..."
+$ctcHostKey = "ssh-rsa #### xx:xx:xx:..."
 
 # In ctc-to-hcm.ps1 config block (Pipeline 2 — CTC pull):
-$ctcHostKey = "ssh-rsa 2048 xx:xx:xx:..."
+$ctcHostKey = "ssh-rsa #### xx:xx:xx:..."
 
 # In ctc-to-hcm.ps1 config block (Pipeline 2 — HCM/ERP push):
-$hcmHostKey = "ssh-rsa 4096 xx:xx:xx:..."
+$hcmHostKey = "ssh-rsa #### xx:xx:xx:..."
 ```
 
 ### 4. Schedule with Task Scheduler
