@@ -49,6 +49,7 @@ $winScpDllPath        = "C:\Path\To\WinSCPnet.dll"
 
 # --- SendMail script ---
 $sendMailScript       = "E:\Path\To\SendMail-GraphAPI.ps1"
+$sendCompletionScript = "E:\Path\To\SendCompletion-GraphAPI.ps1"
 
 # --- Log retention ---
 $logRetentionDays        = 90   # Pipeline log retention in days
@@ -194,6 +195,7 @@ try {
         }
 
         $latestCredFile = $credFiles[0]
+        $script:latestCredFileName = $latestCredFile.Name
         Log "Most recent credentials file: $($latestCredFile.Name). Downloading."
 
         $ctcSession.GetFiles(
@@ -329,6 +331,10 @@ try {
     # Write current run timestamp for smart config sync on next run
     (Get-Date).ToString("yyyy-MM-dd HH:mm:ss") | Set-Content $lastRunFile
     Log "Last-run timestamp updated."
+
+    # Notify credentials analyst that the file is ready for processing in Frontline
+    Log "Sending completion notification."
+    & $sendCompletionScript -credentialFileName $script:latestCredFileName
 
     Log "Pipeline completed successfully."
 
